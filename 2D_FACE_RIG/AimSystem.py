@@ -113,13 +113,7 @@ def createAimSystem ( systemName , follower , target , upLocator , headBBoxCente
     return locAim , upLocGroup[0]
 
 '''
-testing:
-
-dsa = sphere()
-dsa[0].translate.set([0,1,2])
-dsa[0].rotate.set([110,21,2])
-
-customTransforms ( dsa[0]  , ['ZTR','TRF','OFF','CNT'] )
+#testing:
 
 sistemaAim = 'l_ojo'
 esfera     = polyCube( sx=1, sy=1, sz=1, h=1 )[0]
