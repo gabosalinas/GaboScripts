@@ -14,6 +14,176 @@ if not path in sys.path:
 
 import UTILITIES
 
+
+
+def move2 ( parent_ , child ):
+    parentC = parentConstraint ( parent_ , child  )
+    delete ( parentC )
+
+def upLocGrpMaker ( upLoc , headBBoxCenter ):
+    '''
+    Crea transform para el upLoc.
+
+    Return upLocGrp , upLoc
+    '''
+    print 'upLocGrpMaker'
+    upLocGrpName     = loc2TrfsNewName( upLoc  )
+    upLocGrp      = group( em = True , n = upLoc + '_TRF' )
+    parent(   upLoc , upLocGrp.name())
+    upLocGrp.translate.set ( headBBoxCenter[0] , headBBoxCenter[1] , headBBoxCenter[2] )
+    return upLocGrp , upLoc
+
+def loc2TrfsNewName( obj  ):
+    '''
+    Genera un nombre a partir de un nombre con sufijo.
+
+    Return nombreNuevoSinSufijo
+    '''
+    print 'loc2TrfsNewName', repr (obj)
+    splitString = '_'
+    if not '_' in obj:
+        newName = obj.name()
+    else:
+        newName = '_'.join(obj.name().split(splitString)[:-1:])
+	print '                 loc2TrfsNewName OK'
+    return newName
+
+def customTransforms ( obj , trfs=[] ):
+	'''
+	Crea transforms desde el mas interior hasta el root, por lo que el orden de los elementos de trfs es relevante.
+	Return [trf1,trf2,trf3,...]
+	'''
+	print 'customTransforms' , obj
+	newName    = loc2TrfsNewName ( obj )
+	trfsReturn = []
+	lastTrf  = group ( em = True , n = newName + '_' + trfs[-1])
+	print 'lastTrf ' , lastTrf
+	trfsReturn.insert (0, lastTrf)
+	print 'insert' , obj,lastTrf ############################# ver q tienen estas variables
+	move2(obj,lastTrf)
+	print 'move2'
+	parent (obj , lastTrf)
+	print 'parent'
+	for index in range( len(trfs) )[1:-1][::-1]:
+		ztr  = group ( em = True , n = newName + '_' + trfs[index] )
+		move2 ( lastTrf , ztr )
+		parent( lastTrf , ztr)
+		lastTrf = ztr
+		trfsReturn.insert (0, lastTrf)
+	rootTrf  = group ( em = True , n = newName + '_' + trfs[0])
+	parent ( lastTrf , rootTrf )
+	trfsReturn.insert (0, rootTrf)
+	print  trfsReturn
+	print '           customTransforms OK'
+	return trfsReturn
+
+def createAimSystem ( systemName , follower , target ,  headBBoxCenter ):
+	'''
+	crea sistema de aim con la posibilidad de twist.
+	systemName		: nombre del sistema.
+	follower		: objeto que mira al target.
+	target			: objeto al que mira el follower.
+	headBBoxCenter	: centro del BoundingBox
+
+	El RETURN puede ser utilizado para conectar la rotacionZ del upLocatorGrp a algun atributo.
+	Return targetLocator , upLocatorGrp
+	'''
+	print 'createAimSystem'
+	systemGrp_  = group ( em=1 , n = systemName + '_AimSystem_GRP' )
+	controlGrp_ = group ( em=1 , n = systemName + '_Controls_GRP')
+	locUpGrp_   = group ( em=1 , n = systemName + '_LocUp_GRP')
+	locAim   = spaceLocator( n=systemName+'_Target_LOC' )
+	locAimUp = spaceLocator( n=systemName+'_Up_LOC' )
+	# renombro followwer . le pongo prefijo del systemName.
+	rename ( follower , systemName+'_'+follower.name() )
+	print 'follower ' , follower
+	#locAim.visibility.set(0)
+	locAim.translate.set  ( headBBoxCenter[0] , headBBoxCenter[1]    , headBBoxCenter[2] +1)
+	locAimUp.translate.set( headBBoxCenter[0] , headBBoxCenter[1]+1  , headBBoxCenter[2]   )
+	# creo transforms para el placer
+	ztrOffTrf3DPlacer = customTransforms ( follower , ['ZTR','AIM','TRF']) # creo transforms para aim y orient constraints
+	# creo transforms para el locUp
+	upLocGroup        = upLocGrpMaker ( locAimUp , headBBoxCenter )
+	# creo transforms para el target
+	targetGroup = customTransforms ( locAim , ['ZTR','TRF','CNT']) # creo transforms para aim y orient constraints
+	# parentando groupo del locUp al grupo root
+	parent ( upLocGroup[0] , locUpGrp_ )
+	# parentando el locator target al transform CNT
+	parent (locAim , targetGroup[2])
+	# parentando el locator target al transform de controles.
+	parent (targetGroup[0] , controlGrp_)
+	# parentando a la carpeta general del sistema.
+	parent ( controlGrp_ , locUpGrp_ , ztrOffTrf3DPlacer[0] , systemGrp_ )
+	# constraint : projection mira al locator target
+	aimConst=aimConstraint( locAim ,ztrOffTrf3DPlacer[1],mo=0,n=locAim.name()+'_AIMC',aim=[0,0,1],wut='object',wuo=upLocGroup[1] )
+	move2 ( target , locAim )
+	return locAim , upLocGroup[0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def constraintObj2Cnt (sel,cnts):
     for o in sel:
         for cnt in cnts[0]:
@@ -64,26 +234,37 @@ def create2DUvNode( name ):
     return uvNode
 
 def createFacePart ( filePath , pos , layerTex , createAt , projScale ,uvNode):
-    layer = filePath.split('\\')[-1].split('.')[0]
-    projector      = createNode ( 'projection' ,     n = layer + '_PRJ'    )
-    projector.projType.set(3)
-    projector.uAngle.set(100)
-    projector.vAngle.set(0)
-    imgSeq         = createNode ( 'file'       ,     n = layer + '_FILE'   )
-    imgSeq.useFrameExtension.set(True)
-    texturePlacer  = createNode ( 'place3dTexture' , n = layer + '_3DP')  # repr(texturePlacer) help(nt.Place3dTexture)
-    texturePlacer.inheritsTransform.set(True)
-    texturePlacer.translate.set ( createAt )
-    texturePlacer.rotateOrder.set(2)
-    #texturePlacer.visibility.set (0)
-    connectAttr ( texturePlacer + '.worldInverseMatrix[0]' , projector + '.placementMatrix' , f = 1 )  # conecto matrices
-    # asigno textura al file.
-    asignText ( imgSeq , filePath )
-    # conecto el nodo uv2d a la imagen
-    connectUV2File( uvNode , imgSeq )
-    # conecto color y alfa de secuencia de imagen a projector
-    connImg2ProjColor ( imgSeq , projector  )
-    return projector , imgSeq , texturePlacer , pos
+	'''
+	filePath  : path del archivo
+	pos       : posicion que corresponde al layer en el layeredTexture.
+	layerTex  : nombre del layer.
+	createAt  : centro de la cabeza.
+	projScale : depth del BoundingBox.
+	uvNode    : nodo de uv compartido entre las texturas.
+
+	RETURN  projector , imgSeq , texturePlacer , pos
+	'''
+
+	layer = filePath.split('\\')[-1].split('.')[0]
+	projector      = createNode ( 'projection' ,     n = layer + '_PRJ'    )
+	projector.projType.set(3)
+	projector.uAngle.set(100)
+	projector.vAngle.set(0)
+	imgSeq         = createNode ( 'file'       ,     n = layer + '_FILE'   )
+	imgSeq.useFrameExtension.set(True)
+	texturePlacer  = createNode ( 'place3dTexture' , n = layer + '_3DP')  # repr(texturePlacer) help(nt.Place3dTexture)
+	texturePlacer.inheritsTransform.set(True)
+	texturePlacer.translate.set ( createAt )
+	texturePlacer.rotateOrder.set(2)
+	#texturePlacer.visibility.set (0)
+	connectAttr ( texturePlacer + '.worldInverseMatrix[0]' , projector + '.placementMatrix' , f = 1 )  # conecto matrices
+	# asigno textura al file.
+	asignText ( imgSeq , filePath )
+	# conecto el nodo uv2d a la imagen
+	connectUV2File( uvNode , imgSeq )
+	# conecto color y alfa de secuencia de imagen a projector
+	connImg2ProjColor ( imgSeq , projector  )
+	return projector , imgSeq , texturePlacer , pos
 
 def connImg2ProjColor ( imgSeq , projector  ):
     '''
@@ -117,10 +298,6 @@ def createIfNeeded( node_Name , node_Type ):
     else:
         nodeRet   = node_Name
     return nodeRet
-
-def move2 ( parenting , child ):
-    parentC = parentConstraint ( parenting , child  )
-    delete ( parentC )
 
 def connectAlphas ( layeredTextureDic ):#alphas[7] pos=7
     for pos in layeredTextureDic.keys():
@@ -158,6 +335,7 @@ def validateInitLocButtCmd(*args):
         return createInitialLocators( ls(sl=1)[0] )
     else:
         warning ('Please, select the head mesh.')
+
 def createInitialLocators(sel):
     '''
     Crea locators para posicion inicial de projectores.
@@ -228,6 +406,7 @@ def parentControls ( networkDic ) :
     for n in range(13,15):
         parent ( networkDic[n][3][1][0] , networkDic[15][3][0][0]  )
         delete ( networkDic[n][3][3][0] )
+
 def placerControl(headSize, upLocTrf , objs=[],placer3d='',nameSuf='ZTR',nameTrf='TRF',nameCNT='CNT',rad=2): #objs=texturePlacer
     '''
     Crea controles para objectos.
@@ -299,96 +478,6 @@ def ccLook ( circ , controlSize , degree , sections ): # apariencia del controla
     ccTrf.getShape().inputs()[0].degree.set(degree)
     ccTrf.getShape().inputs()[0].sections.set(sections)
 
-def createAimSystem ( layer , infoParte , loc , headBBoxCenter ): # viene de createPart [projector , imgSeq , texturePlacer , pos]
-    #headBBoxCenter=[0,0,0]   del headBBoxCenter
-    #layer='l_ojo' del layer
-    #infoParte=('b_diente_PRJ','b_diente_FILE', 'b_diente_3DP', 10) del infoParte
-    #loc='l_ojo' del loc
-
-    locAim   = spaceLocator( n=layer+'_LOC' )
-    locAimUp = spaceLocator( n=layer+'_UP_LOC' )
-
-    #locAim.visibility.set(0)
-
-    locAim.translate.set  ( headBBoxCenter[0] , headBBoxCenter[1]    , headBBoxCenter[2]+1 )
-    locAimUp.translate.set( headBBoxCenter[0] , headBBoxCenter[1]+1  , headBBoxCenter[2]   )
-
-    print 'transforms aim' , infoParte[0]
-    ztrOffTrf3DPlacer = ztrOffTrfPlacer ( infoParte[2] , '_') # creo transforms para aim y orient constraints
-
-    print 'upLocGrpMaker'
-    upLocGroup = upLocGrpMaker ( locAimUp , headBBoxCenter )
-
-    print 'createAimSystem , aimconstraint:::'
-    print 'locAim' , repr(locAim)
-    print 'ztrOffTrf3DPlacer[1]' , repr(ztrOffTrf3DPlacer[1])
-    print 'upLocGroup' , repr(upLocGroup)
-    aimConst    = aimConstraint    ( locAim , ztrOffTrf3DPlacer[1] , mo = 1 , n = locAim + '_AIMC' , wut='object' , wuo = upLocGroup[1] )
-
-    print 'move'
-    move2 ( loc , locAim )
-
-
-    return locAim , upLocGroup[0]
-
-
-
-
-
-
-def ztrOffTrfPlacer ( obj , splitString ):  # obj=ls(sl=1)[0]  ztrOffTrfPlacer ( ls(sl=1)[0] , '_' ) del obj
-    '''
-    Crea transforms para los constraints AIM y ORIENT del placer.
-    Example:
-    ztrOffTrfPlacer ( ls(sl=1)[0] , '_' )
-
-    '''
-    #print '--- OBJ:' , obj.name()
-    #print 'newName'
-    newName = loc2TrfsNewName( obj , splitString )
-    #print 'group'
-    ztr  = group( em = True , n = newName + '_ZTR' )
-    #print 'parent', obj , ztr
-    pcns = parentConstraint(obj,ztr)
-    #print 'scale' , obj , ztr
-    scns = scaleConstraint(obj,ztr)
-    #print 'delete'  , pcns , scns
-    delete(pcns,scns)
-    #print 'aimtrf'
-    aimTrf    = duplicate( ztr  , n= newName + '_AIM_TRF')[0]
-    #print 'parent aim ztr'
-    parent(aimTrf,ztr)
-    #print 'parent obj orientTrf'
-    parent(obj,aimTrf)
-    #print 'ztrOffTrfPlacer OK'
-    return ztr , aimTrf
-
-
-def upLocGrpMaker ( upLoc , headBBoxCenter ):
-    upLocGrpName     = loc2TrfsNewName( upLoc , '_' )
-    print 'upLocGrpName'
-    upVectorTrf      = group( em = True , n = upLoc + '_TRF' )
-    print 'upVectorTrf', upVectorTrf
-    parent(   upLoc , upVectorTrf.name())
-    print 'parent' , repr(upLoc) , repr(upVectorTrf)
-    upVectorTrf.translate.set ( headBBoxCenter[0] , headBBoxCenter[1] , headBBoxCenter[2] )
-    print 'moviendo upTrf'
-    return upVectorTrf , upLoc
-
-
-
-def loc2TrfsNewName( obj , splitString ):
-    if not splitString in obj:
-        newName = obj.name()
-    else:
-        newName = '_'.join(obj.name().split(splitString)[:-1:])
-    return newName
-
-
-
-
-
-
 
 
 ####### ####### ####### ####### ####### ####### ####### #######
@@ -415,7 +504,7 @@ def create2DFacialRig ( *args ): #del s
         layeredTextureDic = {}
         layerTex     =   createIfNeeded ( 'Face_LTX' , 'layeredTexture' )
         faceShader   = createIfNeeded ( 'Face_SHD' , 'aiStandard' )
-        headPivot    = sel.getBoundingBox().center()
+        headCenter    = sel.getBoundingBox().center()
         print 'sel: ' + sel
         uvNode = create2DUvNode( sel )
         try:
@@ -431,11 +520,11 @@ def create2DFacialRig ( *args ): #del s
                 # path de secuencia
                 filePath = k + '\\' + dirsFiles[k][0]
                 # crea projector,file y placer conectados al canal especificado
-                projectorImagePlacerInput = createFacePart ( filePath , ordenLayers[ layer ] , layerTex  , headPivot  , headSize , uvNode)
+                projectorImagePlacerInput = createFacePart ( filePath , ordenLayers[ layer ] , layerTex  , headCenter  , headSize , uvNode)
                 # guardo parte en dic
                 layeredTextureDic [ ordenLayers[ layer ]   ] = projectorImagePlacerInput [ : -1 ]
                 # creo sistema Aim. Argumentos: layer, nombreDelPlacer , locatorParaUbicar.translate
-                locAim = createAimSystem ( layer , projectorImagePlacerInput , loc , headPivot )
+                locAim = createAimSystem ( layer , projectorImagePlacerInput[2] , loc , headCenter )
                 # creo control para el Aim
                 #ccCnt = placerControl ( headSize, locAim[1],objs=locAim , rad = locSize , placer3d = projectorImagePlacerInput[2]  )
                 # guardo control
@@ -465,3 +554,13 @@ r1 = cmds.rowLayout( numberOfColumns=2, columnWidth2=(200, 200), adjustableColum
 cmds.text('y clickea:  ' , p = r1 )
 cmds.button( label = 'RIG HEAD' , command = create2DFacialRig , p = r1 )
 cmds.showWindow (win)
+
+
+
+sistemaAim = 'l_ojo'
+cubo     = polyCube( sx=1, sy=1, sz=1, h=1 )[0]
+headCurveControl = circle(n='head_CNT')
+#cubo.translateY.set(3)
+
+target     = spaceLocator (n='target_LOC')
+target.translateZ.set(3)
