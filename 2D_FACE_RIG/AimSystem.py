@@ -117,9 +117,12 @@ def createAimSystem ( systemName , follower , target ,  headBBoxCenter ):
 #testing:
 
 sistemaAim = 'l_ojo'
-esfera     = polyCube( sx=1, sy=1, sz=1, h=1 )[0]
+cubo     = polyCube( sx=1, sy=1, sz=1, h=1 )[0]
+cubo.translateY.set(3)
+
 target     = spaceLocator (n='taget_LOC')
 target.translateZ.set(3)
-centroXYZ     = esfera.getBoundingBox().center()
-createAimSystem (sistemaAim, esfera, target,  centroXYZ)
+
+centroXYZ     = cubo.getBoundingBox().center()
+createAimSystem (sistemaAim, cubo, target,  centroXYZ)
 #delete(target)
