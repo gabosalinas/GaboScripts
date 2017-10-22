@@ -120,7 +120,7 @@ sistemaAim = 'l_ojo'
 cubo     = polyCube( sx=1, sy=1, sz=1, h=1 )[0]
 cubo.translateY.set(3)
 
-target     = spaceLocator (n='taget_LOC')
+target     = spaceLocator (n='target_LOC')
 target.translateZ.set(3)
 
 centroXYZ     = cubo.getBoundingBox().center()
