@@ -59,7 +59,7 @@ def customTransforms ( obj , trfs=[] ):
     print  trfsReturn
     return trfsReturn
 
-def createAimSystem ( systemName , follower , target , upLocator , headBBoxCenter ):
+def createAimSystem ( systemName , follower , target ,  headBBoxCenter ):
     '''
     crea sistema de aim con la posibilidad de twist.
     El RETURN puede ser utilizado para conectar la rotacionZ del upLocatorGrp a algun atributo.
@@ -67,6 +67,8 @@ def createAimSystem ( systemName , follower , target , upLocator , headBBoxCente
     Return targetLocator , upLocatorGrp
     '''
     print 'createAimSystem'
+
+
     systemGrp_  = group ( em=1 , n = systemName + '_AimSystem_GRP' )
     controlGrp_ = group ( em=1 , n = systemName + '_Controls_GRP')
     locUpGrp_   = group ( em=1 , n = systemName + '_LocUp_GRP')
@@ -79,7 +81,7 @@ def createAimSystem ( systemName , follower , target , upLocator , headBBoxCente
 
     #locAim.visibility.set(0)
 
-    locAim.translate.set  ( headBBoxCenter[0] , headBBoxCenter[1]    , headBBoxCenter[2]+1 )
+    locAim.translate.set  ( headBBoxCenter[0] , headBBoxCenter[1]    , headBBoxCenter[2] +1)
     locAimUp.translate.set( headBBoxCenter[0] , headBBoxCenter[1]+1  , headBBoxCenter[2]   )
 
     # creo transforms para el placer
@@ -112,15 +114,12 @@ def createAimSystem ( systemName , follower , target , upLocator , headBBoxCente
 
     return locAim , upLocGroup[0]
 
-'''
 #testing:
 
 sistemaAim = 'l_ojo'
 esfera     = polyCube( sx=1, sy=1, sz=1, h=1 )[0]
 target     = spaceLocator (n='taget_LOC')
-target.translate.set([0,1,2])
-upLoc      = spaceLocator (n='up_LOC')
+target.translateZ.set(3)
 centroXYZ     = esfera.getBoundingBox().center()
-createAimSystem (sistemaAim, esfera, target, upLoc, centroXYZ)
-delete(target,upLoc)
-'''
+createAimSystem (sistemaAim, esfera, target,  centroXYZ)
+#delete(target)
