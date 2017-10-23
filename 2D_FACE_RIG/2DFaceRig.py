@@ -21,17 +21,17 @@ def move2 ( parent_ , child ):
     delete ( parentC )
 
 def upLocGrpMaker ( upLoc , headBBoxCenter ):
-    '''
-    Crea transform para el upLoc.
+	'''
+	Crea transform para el upLoc.
 
-    Return upLocGrp , upLoc
-    '''
-    print 'upLocGrpMaker'
-    upLocGrpName     = loc2TrfsNewName( upLoc  )
-    upLocGrp      = group( em = True , n = upLoc + '_TRF' )
-    parent(   upLoc , upLocGrp.name())
-    upLocGrp.translate.set ( headBBoxCenter[0] , headBBoxCenter[1] , headBBoxCenter[2] )
-    return upLocGrp , upLoc
+	Return upLocGrp , upLoc
+	'''
+	upLocGrpName     = loc2TrfsNewName( upLoc  )
+	upLocGrp      = group( em = True , n = upLoc + '_TRF' )
+	parent(   upLoc , upLocGrp.name())
+	upLocGrp.translate.set ( headBBoxCenter[0] , headBBoxCenter[1] , headBBoxCenter[2] )
+	print '    upLocGrpMaker  ok'
+	return upLocGrp , upLoc
 
 def loc2TrfsNewName( obj  ):
     '''
@@ -39,7 +39,6 @@ def loc2TrfsNewName( obj  ):
 
     Return nombreNuevoSinSufijo
     '''
-    print 'loc2TrfsNewName', repr (obj)
     splitString = '_'
     if not '_' in obj:
         newName = obj.name()
@@ -53,17 +52,13 @@ def customTransforms ( obj , trfs=[] ):
 	Crea transforms desde el mas interior hasta el root, por lo que el orden de los elementos de trfs es relevante.
 	Return [trf1,trf2,trf3,...]
 	'''
-	print 'customTransforms' , obj
 	newName    = loc2TrfsNewName ( obj )
+	print 'newName' , newName
 	trfsReturn = []
 	lastTrf  = group ( em = True , n = newName + '_' + trfs[-1])
-	print 'lastTrf ' , lastTrf
 	trfsReturn.insert (0, lastTrf)
-	print 'insert' , obj,lastTrf ############################# ver q tienen estas variables
 	move2(obj,lastTrf)
-	print 'move2'
 	parent (obj , lastTrf)
-	print 'parent'
 	for index in range( len(trfs) )[1:-1][::-1]:
 		ztr  = group ( em = True , n = newName + '_' + trfs[index] )
 		move2 ( lastTrf , ztr )
@@ -73,7 +68,6 @@ def customTransforms ( obj , trfs=[] ):
 	rootTrf  = group ( em = True , n = newName + '_' + trfs[0])
 	parent ( lastTrf , rootTrf )
 	trfsReturn.insert (0, rootTrf)
-	print  trfsReturn
 	print '           customTransforms OK'
 	return trfsReturn
 
@@ -86,17 +80,17 @@ def createAimSystem ( systemName , follower , target ,  headBBoxCenter ):
 	headBBoxCenter	: centro del BoundingBox
 
 	El RETURN puede ser utilizado para conectar la rotacionZ del upLocatorGrp a algun atributo.
-	Return targetLocator , upLocatorGrp
+	RETURN
+	locAim 		: locator al que mira el aimConstraint.
+	aimConst 	: nodo de aimConstraint.
 	'''
-	print 'createAimSystem'
 	systemGrp_  = group ( em=1 , n = systemName + '_AimSystem_GRP' )
 	controlGrp_ = group ( em=1 , n = systemName + '_Controls_GRP')
 	locUpGrp_   = group ( em=1 , n = systemName + '_LocUp_GRP')
 	locAim   = spaceLocator( n=systemName+'_Target_LOC' )
 	locAimUp = spaceLocator( n=systemName+'_Up_LOC' )
 	# renombro followwer . le pongo prefijo del systemName.
-	rename ( follower , systemName+'_'+follower.name() )
-	print 'follower ' , follower
+	rename ( follower , follower.name() )
 	#locAim.visibility.set(0)
 	locAim.translate.set  ( headBBoxCenter[0] , headBBoxCenter[1]    , headBBoxCenter[2] +1)
 	locAimUp.translate.set( headBBoxCenter[0] , headBBoxCenter[1]+1  , headBBoxCenter[2]   )
@@ -117,7 +111,8 @@ def createAimSystem ( systemName , follower , target ,  headBBoxCenter ):
 	# constraint : projection mira al locator target
 	aimConst=aimConstraint( locAim ,ztrOffTrf3DPlacer[1],mo=0,n=locAim.name()+'_AIMC',aim=[0,0,1],wut='object',wuo=upLocGroup[1] )
 	move2 ( target , locAim )
-	return locAim , upLocGroup[0]
+	print '	 createAimSystem ok'
+	return locAim , aimConst
 
 
 
@@ -407,76 +402,61 @@ def parentControls ( networkDic ) :
         parent ( networkDic[n][3][1][0] , networkDic[15][3][0][0]  )
         delete ( networkDic[n][3][3][0] )
 
-def placerControl(headSize, upLocTrf , objs=[],placer3d='',nameSuf='ZTR',nameTrf='TRF',nameCNT='CNT',rad=2): #objs=texturePlacer
-    '''
-    Crea controles para objectos.
-    Returns [ [Controls 's name] , [ZTRs 's name]  ]
-    '''
-    select(cl=1)
-    select( objs )
-    objs = cmds.ls(sl=1)
-    cntsRet     = []
-    ztrs        = []
-    makeCircles = []
-    roots       = []
-    for obj in objs: # obj = 'r_pupila_3DP'
-        print 'OBJ: ' + obj
-        if '|' in obj:
-            obj=obj.split('|')[-1]
-        if '_' in obj:
-            newName=obj.split(obj.split('_')[-1:][0])[0]
-        else:
-            newName=obj
 
-        ztr=cmds.group(em=True,n=str(newName+nameSuf))
-        pcns=cmds.parentConstraint(obj,ztr)[0]
-        scns=cmds.scaleConstraint(obj,ztr)[0]
-        cmds.delete(pcns,scns)
-        trf=cmds.duplicate(ztr,n=str(newName+nameTrf))[0]
-        cmds.parent(trf,ztr)
-        cntl=cmds.circle(radius=rad,nr=(0,0,1),name=str(newName+nameCNT)) # creo cnt
-        cnt=cntl[0]
-        pcns=cmds.parentConstraint(trf,cnt) # constraints
-        scns=cmds.scaleConstraint(trf,cnt)
-        cmds.delete(pcns,scns)              # borro constraints
-        cmds.parent(cnt,trf)
-        cntsRet.append(cnt)
-        ztrs.append (ztr)
-        cmds.parent( obj , cnt )
-        maya.mel.eval ('DeleteHistory ' + cnt )
+# -*- encoding: utf-8 -*-
+def placerControl(headSize, targetLoc , aimConsNode , placer3d , nameSuf='ZTR' , nameTrf='TRF' , nameCNT='CNT' , rad=2 ): #objs=texturePlacer
+	'''
+	headSize <integer> : tamaño de cabeza.
+	targetLoc <locator>  : locator al que mira el aimConstraint.
+	aimConsNode <aimConstraint> : nodo de aimConstraint
+	placer3d <3dTexturePlacer> : del projection.
 
-        if 'l_ojo' in obj or 'boca' in obj:                               # tamaños para cada tipo
-            ccLook (cntl,rad,3,5)
-        elif 'l_pupila' in obj or 'lengua' in obj:
-            ccLook (cntl,rad*0.6,1,1)
-        elif 'l_parpado' in obj :
-            ccLook (cntl,rad*1.2,1,1)
-        elif 'extras_LOC' == obj :
-            ccLook (cntl,rad*0.3,1,4)
+	RETURN:
+	cnt: curva control que se ha creado.
 
-        placer3d.scaleX.set(rad)
-        placer3d.scaleY.set(rad)
-        placer3d.scaleZ.set(headSize)
-        scaleConstraint ( cnt , placer3d , mo=1 , skip='z')         # el cnt controla scaleXY solamente
+	'''
+	print '\n placerControl \n'
+	print 'headSize', headSize
+	print 'targetLoc', targetLoc , repr(targetLoc)
+	print 'aimConsNode' , aimConsNode , repr (aimConsNode)
+	print ''
+	if '|' in targetLoc:
+		targetLoc=targetLoc.split('|')[-1]
+	if '_' in targetLoc:
+		newName=targetLoc.split(targetLoc.split('_')[-1:][0])[0]
+	else:
+		newName=targetLoc
+	cnt=circle(radius=rad,nr=(0,0,1),name=str(newName+'_CC_'+nameCNT))[0] 		# creo cnt
+	if 'l_ojo' in targetLoc or 'boca' in targetLoc:                             # tamaños  y formas para cada parte de la cara
+		ccLook (cntl,rad,3,5)
+	elif 'l_pupila' in targetLoc or 'lengua' in targetLoc:
+		ccLook (cntl,rad*0.6,1,1)
+	elif 'l_parpado' in targetLoc :
+		ccLook (cntl,rad*1.2,1,1)
+	elif 'extras_LOC' == targetLoc :
+		ccLook (cntl,rad*0.3,1,4)
+	move2(targetLoc, cnt) 																		# llevo el cnt al locator del aimConstraint
+	targetLoc_parent = listRelatives( targetLoc.name() , parent=1, fullPath=1 , pa=1)[0]		# query del parent del locator del aimConstraint
+	parent( cnt , targetLoc_parent )															# cnt ahora es hijo del parent del locator
+	parent( targetLoc , cnt )																	# cnt ahora es hijo del parent del locator
+	maya.mel.eval ('DeleteHistory ' + cnt )														# borro history
+	placer3d.scaleX.set(rad)																	# escalas del 3dTexturePlacer
+	placer3d.scaleY.set(rad)
+	placer3d.scaleZ.set(headSize)
+	connectAttr( cnt.rotateZ , aimConsNode.offsetZ )
+	scaleConstraint ( cnt , placer3d , mo=1 , skip='z')         								# el cnt controla scaleXY solamente
+	print 'placerControl OK'
+	return cnt
 
 
 
-        print 'orientConst'
-        orientConstraint ( cnt , upLocTrf , mo=1 , skip=('x','y') )   # el cnt controla rotateZ
-
-        root = cmds.group(em=True,n=str(newName+'ROT'))
-        roots.append (root)
-        cmds.parent( ztr , root )
-
-        print 'placerControl OK'
-    return cntsRet,ztrs,makeCircles,roots
 
 def ccLook ( circ , controlSize , degree , sections ): # apariencia del controlador
-    ccShape = listRelatives ( circ )[0]
-    ccTrf   = ccShape.getTransform()
-    ccTrf.getShape().inputs()[0].radius.set( controlSize )
-    ccTrf.getShape().inputs()[0].degree.set(degree)
-    ccTrf.getShape().inputs()[0].sections.set(sections)
+	ccShape = listRelatives ( circ )[0]
+	ccTrf   = ccShape.getTransform()
+	ccTrf.getShape().inputs()[0].radius.set( controlSize )
+	ccTrf.getShape().inputs()[0].degree.set(degree)
+	ccTrf.getShape().inputs()[0].sections.set(sections)
 
 
 
@@ -526,19 +506,18 @@ def create2DFacialRig ( *args ): #del s
                 # creo sistema Aim. Argumentos: layer, nombreDelPlacer , locatorParaUbicar.translate
                 locAim = createAimSystem ( layer , projectorImagePlacerInput[2] , loc , headCenter )
                 # creo control para el Aim
-                #ccCnt = placerControl ( headSize, locAim[1],objs=locAim , rad = locSize , placer3d = projectorImagePlacerInput[2]  )
+                ccCnt = placerControl ( headSize, locAim[0] , locAim[1] , projectorImagePlacerInput[2] , rad = locSize  )
                 # guardo control
                 #layeredTextureDic [ projectorImagePlacerInput[3]  ] = layeredTextureDic [ projectorImagePlacerInput[3]  ] + tuple( [ ccCnt ] )
         # conecto projection a un layer determinado o el siguiente disponible.
-        #for k in layeredTextureDic.keys():
-        #    connProj2LayTexture( layeredTextureDic[k][0] , layerTex , k , layeredTextureDic)  # (nt.Projection(u'l_ojo_PRJ'), nt.LayeredTexture(u'Face_LTX'), 15)
-        #parentControls ( layeredTextureDic )
-        #deleteHelpLocators (scaleRef)
-    else:
-        warning ( '  Selection is null or multiple. Select head mesh ' )
+		for k in layeredTextureDic.keys():
+			connProj2LayTexture( layeredTextureDic[k][0] , layerTex , k , layeredTextureDic)
+		deleteHelpLocators (scaleRef)
+	else:
+		warning ( '  Selection is null or multiple. Select head mesh ' )
 
 if cmds.window ('win2dFacialRig',exists=1):
-    cmds.deleteUI ( 'win2dFacialRig' )
+	cmds.deleteUI ( 'win2dFacialRig' )
 win = cmds.window('win2dFacialRig', title="2D Facial Rig! v1.0" , menuBar=0 , w=400 , s=1 , height= 50, bgc=(0.1,0.1,0.1) , resizeToFitChildren=1 )
 col1 = cmds.columnLayout( columnAttach=('left', 5), adjustableColumn=True , rowSpacing=5, cal= "center" , columnWidth=100 , p=win , bgc=(0.15,0.15,0.15)  )
 cmds.button('Selecciona el mesh de la cabeza y clickeame.',p=col1,c=validateInitLocButtCmd , w=400) #validateInitLocButtCmd()
@@ -554,13 +533,3 @@ r1 = cmds.rowLayout( numberOfColumns=2, columnWidth2=(200, 200), adjustableColum
 cmds.text('y clickea:  ' , p = r1 )
 cmds.button( label = 'RIG HEAD' , command = create2DFacialRig , p = r1 )
 cmds.showWindow (win)
-
-
-
-sistemaAim = 'l_ojo'
-cubo     = polyCube( sx=1, sy=1, sz=1, h=1 )[0]
-headCurveControl = circle(n='head_CNT')
-#cubo.translateY.set(3)
-
-target     = spaceLocator (n='target_LOC')
-target.translateZ.set(3)
